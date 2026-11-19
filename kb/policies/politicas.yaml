@@ -1,11 +1,23 @@
 # Politicas internas SIMULADAS de AsesorIA (redactadas para el reto; no son politicas reales).
 # Este archivo es la UNICA fuente de verdad:
-#   1) el codigo lo lee para validar idoneidad y limites de cada orden (determinista);
+#   1) el codigo lo lee para clasificar el perfil y validar cada orden (determinista);
 #   2) un script genera a partir de el los documentos Markdown que se ingestan en la base
 #      de conocimiento, para que el agente pueda explicar y citar la regla.
-version: "1.0"
+version: "2.0"
 vigente_desde: "2026-11-19"
 simulada: true
+
+# Como se determina el perfil de riesgo a partir de lo que el cliente cuenta en la conversacion.
+# El modelo solo EXTRAE los datos; la clasificacion la hace el codigo con esta regla.
+clasificacion_de_perfil:
+  datos_requeridos: [capital_invertible_usd, horizonte_anios, perdida_tolerable_pct]
+  # Perdida maxima que el cliente tolera sin vender (en % de su inversion).
+  por_perdida_tolerable_pct:
+    conservador_hasta: 10      # tolera hasta 10%
+    moderado_hasta: 25         # tolera hasta 25%; por encima, agresivo
+  # Un horizonte corto reduce la capacidad de asumir riesgo: baja un nivel el perfil.
+  horizonte_corto_anios: 3
+  perfil_declarado: "Si el cliente declara explicitamente su perfil, se registra el declarado."
 
 # Nivel de riesgo asignado a cada clase de activo.
 clases_de_activo:
@@ -19,7 +31,7 @@ clases_de_activo:
     descripcion: "Accion de una sola empresa"
     riesgo: alto
 
-# Universo operable: solo activos cubiertos por la base de conocimiento.
+# Universo operable (limite DURO): solo activos cubiertos por la base de conocimiento.
 universo:
   AGG: etf_renta_fija
   BND: etf_renta_fija
@@ -29,11 +41,13 @@ universo:
   MSFT: accion_individual
   NVDA: accion_individual
 
-# Reglas por perfil de riesgo. Los porcentajes son sobre el capital invertible del cliente.
+# Limites RECOMENDADOS por perfil (porcentajes sobre el capital invertible del cliente).
+# Son politicas "suaves": excederlos no bloquea la orden. Se advierte al cliente en dos pasos y,
+# si insiste, la orden sigue a la confirmacion final y la excepcion queda registrada.
 perfiles:
   conservador:
     objetivo: "Preservar capital; tolera perdidas pequenas."
-    riesgo_maximo_por_activo: medio        # no puede comprar acciones individuales
+    riesgo_maximo_por_activo: medio
     max_renta_variable_pct: 30
     max_concentracion_por_activo_pct:
       etf_renta_fija: 60
@@ -59,11 +73,12 @@ perfiles:
       accion_individual: 20
     max_orden_pct_capital: 25
 
-# Limites duros de cualquier orden, sin importar el perfil.
+# Limites DUROS de cualquier orden (bloquean sin excepcion).
 limites_de_orden:
   lado_permitido: buy            # solo compras
   tipo_permitido: market
   vigencia_permitida: day
-  monto_maximo_usd: 50000
-  cantidad_maxima_acciones: 1000
+  tope_de_monto: "El monto no puede superar el poder de compra: el menor entre el capital disponible del cliente y el saldo real de la cuenta."
   requiere_confirmacion_humana: true
+  # Escenario ilustrativo de perdida que se muestra en la segunda advertencia.
+  caida_ilustrativa_pct: 20

@@ -40,8 +40,9 @@ def write_failure_analysis(results: dict) -> str:
         """Devuelve el detalle de un caso: pregunta, respuesta del asesor, metricas con su evidencia y herramientas usadas."""
         for c in results["cases"]:
             if c["id"] == case_id:
-                return json.dumps({k: c[k] for k in ("id", "category", "client_id", "input", "answer", "metrics",
-                                                     "tools_called", "failure_tags", "notes")}, ensure_ascii=False)[:9000]
+                return json.dumps({k: c[k] for k in ("id", "category", "risk", "capital_usd", "input", "turn_answers",
+                                                     "metrics", "tools_called", "failure_tags", "notes")},
+                                  ensure_ascii=False)[:9000]
         return f"Caso desconocido: {case_id}"
 
     agent = Agent(client=OpenAIChatClient(model=os.getenv("JUDGE_MODEL", "gpt-6.1-terra")), name="AgenteEvaluador",

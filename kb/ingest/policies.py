@@ -18,7 +18,8 @@ def build_policy_docs() -> list[dict]:
     pol = load_policies()
     version, vigente = pol["version"], pol["vigente_desde"]
     clases, universo, perfiles = pol["clases_de_activo"], pol["universo"], pol["perfiles"]
-    lim = pol["limites_de_orden"]
+    lim, clasif = pol["limites_de_orden"], pol["clasificacion_de_perfil"]
+    cortes = clasif["por_perdida_tolerable_pct"]
 
     def meta(doc_id: str, title: str) -> dict:
         return {
@@ -34,21 +35,33 @@ def build_policy_docs() -> list[dict]:
         }
 
     # --- 1. Perfiles de riesgo ---
-    sec_perfiles = [{
-        "title": "Alcance de la politica de perfiles de riesgo",
-        "text": f"{NOTA} Version {version}, vigente desde {vigente}. Todo cliente tiene asignado uno de tres "
-                "perfiles de riesgo: conservador, moderado o agresivo. El perfil determina que clases de activo "
-                "puede comprar y en que proporcion de su capital invertible.",
-    }]
+    sec_perfiles = [
+        {
+            "title": "Alcance de la politica de perfiles de riesgo",
+            "text": f"{NOTA} Version {version}, vigente desde {vigente}. Antes de dar una recomendacion personalizada o "
+                    "de ejecutar una compra se determina el perfil de riesgo del cliente: conservador, moderado o "
+                    "agresivo. No se requiere perfil para consultas informativas (hechos de documentos, educacion al "
+                    "inversor o datos de mercado).",
+        },
+        {
+            "title": "Como se determina el perfil de riesgo",
+            "text": "El perfil se obtiene en la conversacion con el cliente. Si el cliente declara explicitamente su "
+                    "perfil, se registra el declarado. Si no, se clasifica segun la perdida maxima que dice tolerar sin "
+                    f"vender: hasta el {cortes['conservador_hasta']}% es conservador; hasta el {cortes['moderado_hasta']}% "
+                    "es moderado; por encima es agresivo. Si su horizonte de inversion es menor a "
+                    f"{clasif['horizonte_corto_anios']} anios, el perfil baja un nivel, porque un plazo corto reduce la "
+                    "capacidad de recuperarse de una caida. Tambien se registra el capital invertible que el cliente indica.",
+        },
+    ]
     for nombre, p in perfiles.items():
         sec_perfiles.append({
             "title": f"Perfil {nombre}",
             "text": (
                 f"Perfil de riesgo {nombre}. Objetivo: {p['objetivo']} "
-                f"El riesgo maximo permitido por activo es '{p['riesgo_maximo_por_activo']}'. "
-                f"La exposicion total a renta variable (acciones individuales y ETF de acciones) no puede superar "
-                f"el {p['max_renta_variable_pct']}% del capital invertible. "
-                f"Una sola orden no puede superar el {p['max_orden_pct_capital']}% del capital invertible."
+                f"El riesgo maximo recomendado por activo es '{p['riesgo_maximo_por_activo']}'. "
+                f"Se recomienda que la exposicion total a renta variable (acciones individuales y ETF de acciones) no "
+                f"supere el {p['max_renta_variable_pct']}% del capital invertible, y que una sola orden no supere "
+                f"el {p['max_orden_pct_capital']}% del capital invertible."
             ),
         })
 
@@ -62,38 +75,39 @@ def build_policy_docs() -> list[dict]:
     for nombre, p in perfiles.items():
         partes = [
             f"hasta {pct}% del capital invertible en un mismo activo de la clase '{clase}'"
-            if pct > 0 else f"no puede invertir en activos de la clase '{clase}'"
+            if pct > 0 else f"no se recomienda invertir en activos de la clase '{clase}'"
             for clase, pct in p["max_concentracion_por_activo_pct"].items()
         ]
         sec_conc.append({
-            "title": f"Limites de concentracion por activo - perfil {nombre}",
-            "text": f"Para un cliente de perfil {nombre}, el limite de concentracion por activo es: "
+            "title": f"Limites recomendados de concentracion por activo - perfil {nombre}",
+            "text": f"Para un cliente de perfil {nombre}, el limite recomendado de concentracion por activo es: "
                     + "; ".join(partes) + ".",
         })
 
     # --- 3. Idoneidad y ordenes ---
     sec_ord = [
         {
-            "title": "Regla de idoneidad (suitability)",
-            "text": f"{NOTA} Antes de proponer o ejecutar una compra se verifica la idoneidad: (1) el activo debe "
-                    "pertenecer al universo operable; (2) el nivel de riesgo de su clase no puede superar el riesgo "
-                    "maximo del perfil del cliente; (3) la posicion resultante no puede exceder el limite de "
-                    "concentracion por activo del perfil; (4) la exposicion total a renta variable no puede exceder "
-                    "el maximo del perfil. Si alguna verificacion falla, la orden se bloquea y se explica el motivo.",
+            "title": "Regla de idoneidad (suitability): limites recomendados y advertencias",
+            "text": f"{NOTA} Los limites del perfil (riesgo maximo por activo, concentracion por activo, exposicion a "
+                    "renta variable y tope por orden) son limites recomendados, no prohibiciones. Si una orden los "
+                    "excede, no se rechaza: primero se advierte al cliente, de forma amable, cual es el monto "
+                    "recomendado para su perfil y por cuanto lo excede; si desea continuar, se le explican los riesgos "
+                    "concretos y se le pregunta de nuevo; si aun asi desea continuar, la orden pasa a la confirmacion "
+                    "final. La decision de operar fuera de los limites recomendados queda registrada como excepcion.",
         },
         {
             "title": "Limites duros por orden",
-            "text": f"Toda orden debe cumplir: solo operaciones de compra (lado '{lim['lado_permitido']}'); solo "
-                    f"ordenes de tipo '{lim['tipo_permitido']}' con vigencia '{lim['vigencia_permitida']}'; monto "
-                    f"maximo de USD {lim['monto_maximo_usd']:,} por orden; cantidad maxima de "
-                    f"{lim['cantidad_maxima_acciones']:,} acciones por orden; y el monto no puede superar el poder de "
-                    "compra disponible del cliente. No se permiten ventas, ventas en corto, opciones ni criptoactivos.",
+            "text": f"Los unicos limites que bloquean una orden sin excepcion son: solo operaciones de compra (lado "
+                    f"'{lim['lado_permitido']}'), de tipo '{lim['tipo_permitido']}' con vigencia "
+                    f"'{lim['vigencia_permitida']}'; el activo debe pertenecer al universo operable; y el monto no puede "
+                    "superar el poder de compra, que es el menor entre el capital disponible del cliente y el saldo real "
+                    "de la cuenta. No se permiten ventas, ventas en corto, opciones ni criptoactivos.",
         },
         {
             "title": "Confirmacion humana obligatoria",
             "text": "Ninguna orden se envia al mercado sin la confirmacion explicita del usuario. El sistema muestra "
-                    "un resumen de la orden (activo, cantidad, precio de referencia, monto estimado y resultado de las "
-                    "validaciones) y espera la aprobacion. Si el usuario rechaza, la orden no se ejecuta.",
+                    "un resumen de la orden (activo, cantidad, precio de referencia, monto estimado, validaciones y "
+                    "advertencias aceptadas) y espera la aprobacion. Si el usuario rechaza, la orden no se ejecuta.",
         },
     ]
 

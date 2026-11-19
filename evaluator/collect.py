@@ -29,7 +29,7 @@ def run_case(base_url: str, case: dict, run_id: str) -> dict:
         requests.post(f"{base_url}/admin/reset", timeout=30).raise_for_status()
         for turn in case["turns"]:
             r = requests.post(f"{base_url}/chat", timeout=TIMEOUT, json={
-                "message": turn, "session_id": session_id, "client_id": case["client_id"], "include_trace": True})
+                "message": turn, "session_id": session_id, "include_trace": True})
             r.raise_for_status()
             resp = r.json()
             responses.append(resp)

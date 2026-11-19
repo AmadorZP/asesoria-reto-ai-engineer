@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from advisor.config import ALPACA_ALLOWED_TOOLS, ALPACA_ORDER_TOOL
 from advisor.runtime import mcp_text
-from advisor.state import LEDGER, TURN, log_event
+from advisor.state import TURN, log_event
 
 MAX_RESULT_CHARS = 6000
 ORDER_FORBIDDEN_ARGS = ("notional", "limit_price", "stop_price", "order_class", "advanced_instructions",
@@ -86,7 +86,10 @@ async def audit_and_guard(context: FunctionInvocationContext, call_next) -> None
     elif name in ("get_stock_snapshot", "get_stock_bars"):
         updates: dict[str, Any] = {"feed": "iex"}            # la cuenta gratuita solo tiene el feed IEX
         if name == "get_stock_bars":
-            updates["limit"] = min(int(args.get("limit") or 1000), 130)
+            # El limite de Alpaca es TOTAL entre todos los simbolos de la llamada: se escala por simbolo para
+            # que una consulta de varios tickers no deje al ultimo con la serie truncada.
+            n_symbols = max(len([s for s in str(args.get("symbols", "")).split(",") if s.strip()]), 1)
+            updates["limit"] = min(int(args.get("limit") or 1000), 130 * n_symbols, 1000)
         _set_args(context, **updates)
         args = _args(context)
     elif name == "get_news":
@@ -111,7 +114,11 @@ async def audit_and_guard(context: FunctionInvocationContext, call_next) -> None
             data = {}
         if data.get("id"):
             ticket.update(estado="ejecutado", order_id=data["id"], status=data.get("status"))
-            LEDGER.add(turn.state.client_id, ticket["symbol"], ticket["qty"], ticket["monto"])
+            # Tenencias de la sesion (en la sesion de Alpaca se leen en vivo de la cuenta, no de aqui).
+            pos = turn.state.holdings.setdefault(ticket["symbol"], {"cantidad": 0, "monto_usd": 0.0})
+            pos["cantidad"] += ticket["qty"]
+            pos["monto_usd"] = round(pos["monto_usd"] + ticket["monto"], 2)
+            turn.state.warnings.pop(f"{ticket['symbol']}:{ticket['qty']}", None)
         else:
             ticket["estado"] = "error"
     record("ok", context.result)

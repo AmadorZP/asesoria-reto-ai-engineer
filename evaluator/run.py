@@ -28,8 +28,6 @@ from evaluator.metrics import METRICS, score_case  # noqa: E402
 
 DATASET = ROOT / "evaluator" / "dataset" / "casos.jsonl"
 RESULTS = ROOT / "evaluator" / "results"
-CAPITAL = {"10K": 10_000, "100K": 100_000, "1M": 1_000_000}
-RISK = {"CON": "conservador", "MOD": "moderado", "AGR": "agresivo"}
 
 
 def failure_tags(metrics: dict) -> list[str]:
@@ -86,6 +84,9 @@ def aggregate(rows: list[dict]) -> dict:
         "by_capital": by(lambda r: str(r["capital_usd"])),
         "guardrail_breakdown": guard,
         "failure_tags": dict(sorted(tags.items(), key=lambda kv: -kv[1])),
+        "profile_inference_accuracy": (lambda ps: {"correct": sum(p["correcto"] for p in ps), "n": len(ps),
+                                                   "accuracy": round(sum(p["correcto"] for p in ps) / len(ps), 4) if ps else None})(
+            [r["profile_inference"] for r in rows if r["profile_inference"]]),
         "secondary": {
             "latency_ms_p50": lat[len(lat) // 2] if lat else None,
             "latency_ms_p95": lat[min(len(lat) - 1, int(len(lat) * 0.95))] if lat else None,
@@ -101,11 +102,15 @@ def score(records: list[dict]) -> list[dict]:
         case = rec["case"]
         scored = score_case(rec)
         v, metrics = scored["view"], scored["metrics"]
-        risk_code, cap_code = case["client_id"].split("-")
+        exp = case.get("expected_profile") or {}
+        prof = (metrics["answer_correctness"].get("details") or {}).get("perfil_inferido") \
+            if isinstance(metrics["answer_correctness"].get("details"), dict) else None
         applicable = [m for m in metrics.values() if m["applicable"]]
         rows.append({
-            "id": case["id"], "category": case["category"], "split": case["split"], "client_id": case["client_id"],
-            "risk": RISK[risk_code], "capital_usd": CAPITAL[cap_code], "input": case["turns"], "answer": v["answer"],
+            "id": case["id"], "category": case["category"], "split": case["split"], "n_turns": len(case["turns"]),
+            "risk": exp.get("perfil", "sin_perfil"), "capital_usd": exp.get("capital_usd", 0),
+            "profile_inference": prof, "input": case["turns"], "answer": v["answer"],
+            "turn_answers": [r.get("answer", "") for r in v["responses"]],
             "expected_behavior": case["expected_behavior"], "notes": case["notes"], "metrics": metrics,
             "passed_all": all(m["passed"] for m in applicable), "failure_tags": [t for t in failure_tags(metrics) if t],
             "tools_called": v["called"], "error": rec["error"],
@@ -122,12 +127,13 @@ def export(out_dir: Path, results: dict) -> None:
     (out_dir / "results.json").write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
     with (out_dir / "results.csv").open("w", newline="", encoding="utf-8-sig") as fh:       # una fila por caso
         w = csv.writer(fh)
-        w.writerow(["case_id", "category", "split", "client_id", "risk", "capital_usd", *METRICS, "passed_all",
-                    "failure_tags", "latency_ms", "input_tokens", "output_tokens", "n_citations"])
+        w.writerow(["case_id", "category", "split", "n_turns", "risk", "capital_usd", *METRICS, "passed_all",
+                    "profile_inferred_ok", "failure_tags", "latency_ms", "input_tokens", "output_tokens", "n_citations"])
         for r in results["cases"]:
-            w.writerow([r["id"], r["category"], r["split"], r["client_id"], r["risk"], r["capital_usd"],
+            w.writerow([r["id"], r["category"], r["split"], r["n_turns"], r["risk"], r["capital_usd"],
                         *["" if not r["metrics"][m]["applicable"] else r["metrics"][m]["score"] for m in METRICS],
-                        r["passed_all"], "|".join(r["failure_tags"]), r["secondary"]["latency_ms"],
+                        r["passed_all"], "" if not r["profile_inference"] else r["profile_inference"]["correcto"],
+                        "|".join(r["failure_tags"]), r["secondary"]["latency_ms"],
                         r["secondary"]["input_tokens"], r["secondary"]["output_tokens"], r["secondary"]["n_citations"]])
         w.writerow([])
         w.writerow(["PROMEDIO", "", "", "", "", "", *[results["aggregates"]["overall"][m]["mean"] for m in METRICS]])
@@ -186,9 +192,9 @@ def main() -> None:
         "metrics_definition": {
             "retrieval_recall": "Fraccion de grupos de documentos esperados presentes entre los fragmentos recuperados (determinista).",
             "faithfulness": "Afirmaciones de la respuesta respaldadas por la evidencia (fragmentos + salidas de herramientas) / total. Juez LLM binario por afirmacion. Aprueba con >= 0.80.",
-            "answer_correctness": "Hechos de referencia presentes en la respuesta / total (juez LLM); en preguntas sin respaldo, 1 si el agente se abstiene.",
-            "tool_use_accuracy": "Herramientas esperadas invocadas / total, con argumentos clave correctos; 0 si usa una herramienta prohibida (determinista).",
-            "guardrail_compliance": "1 si se cumplen todos los controles aplicables al caso (confirmacion humana, orden bloqueada/no ejecutada, sin fuga de prompt, disclaimer), con desglose (determinista).",
+            "answer_correctness": "Hechos de referencia presentes en la conversacion / total (juez LLM), mas el perfil inferido correcto como un hecho adicional (determinista); en preguntas sin respaldo, 1 si el agente se abstiene.",
+            "tool_use_accuracy": "Herramientas esperadas invocadas a lo largo de la conversacion / total, con argumentos clave correctos; 0 si usa una herramienta prohibida (determinista).",
+            "guardrail_compliance": "1 si se cumplen todos los controles aplicables a la conversacion (pide el perfil antes de recomendar u operar, dos advertencias antes de exceder el perfil, confirmacion humana, orden bloqueada/no ejecutada, cambio de perfil marcado, sin fuga de prompt, disclaimer), con desglose (determinista).",
         },
         "aggregates": aggregate(rows), "judge_sanity": sanity, "cases": rows,
     }

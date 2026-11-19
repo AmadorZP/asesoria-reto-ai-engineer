@@ -2,11 +2,12 @@
 
     uvicorn advisor.api:app --port 8000
 
-POST /chat      conversa con el agente (devuelve respuesta, citas, traza y aprobaciones pendientes)
-POST /approve   confirma o rechaza una orden pendiente (human-in-the-loop)
-GET  /clients   clientes ficticios disponibles
-GET  /health    estado, modelo y herramientas MCP expuestas
-POST /admin/reset   (solo desarrollo/evaluacion) limpia sesiones y tenencias
+POST /chat             conversa con el agente (respuesta, citas, perfil, traza y aprobaciones pendientes)
+POST /approve          confirma o rechaza una orden pendiente (human-in-the-loop)
+GET  /sessions         conversaciones con su perfil inferido (la primera es la cuenta real de Alpaca)
+GET  /sessions/{id}    transcripcion y perfil de una conversacion
+GET  /health           estado, modelo y herramientas MCP expuestas
+POST /admin/reset      (solo desarrollo/evaluacion) limpia las sesiones
 """
 from __future__ import annotations
 
@@ -20,8 +21,8 @@ from pydantic import BaseModel, Field
 
 from advisor import runtime
 from advisor.config import ADVISOR_MODEL
-from advisor.policy import clients
 from advisor.service import AdvisorService, SessionError
+from advisor.state import ALPACA_SESSION_ID
 
 STATIC = Path(__file__).parent / "static"
 service = AdvisorService()
@@ -34,13 +35,14 @@ async def lifespan(_: FastAPI):
     await service.stop()
 
 
-app = FastAPI(title="AsesorIA - Agente asesor", version="1.0", lifespan=lifespan)
+app = FastAPI(title="AsesorIA - Agente asesor", version="2.0", lifespan=lifespan)
 
 
 class ChatIn(BaseModel):
     message: str = Field(..., description="Mensaje del usuario")
-    session_id: str | None = Field(None, description="Id de sesion; si se omite se crea una nueva")
-    client_id: str | None = Field(None, description="Cliente de la sesion (obligatorio al crearla), p. ej. MOD-10K")
+    session_id: str | None = Field(None, description=(
+        f"Id de la conversacion; si se omite se crea una nueva. '{ALPACA_SESSION_ID}' es la sesion ligada a la "
+        "cuenta real de Alpaca (capital y tenencias reales)."))
     include_trace: bool = Field(True, description="Incluir la traza de herramientas en la respuesta")
 
 
@@ -60,7 +62,7 @@ def _out(result: dict, include_trace: bool = True) -> dict:
 async def chat(body: ChatIn) -> dict:
     session_id = body.session_id or f"s-{uuid.uuid4().hex[:12]}"
     try:
-        return _out(await service.chat(session_id, body.client_id, body.message), body.include_trace)
+        return _out(await service.chat(session_id, body.message), body.include_trace)
     except SessionError as exc:
         raise HTTPException(exc.status, exc.detail) from exc
 
@@ -73,10 +75,17 @@ async def approve(body: ApproveIn) -> dict:
         raise HTTPException(exc.status, exc.detail) from exc
 
 
-@app.get("/clients")
-async def list_clients() -> list[dict]:
-    return [{"client_id": c["client_id"], "nombre": c["nombre"], "perfil": c["perfil"],
-             "capital_invertible_usd": c["capital_invertible_usd"]} for c in clients().values()]
+@app.get("/sessions")
+async def sessions() -> list[dict]:
+    return await service.list_sessions()
+
+
+@app.get("/sessions/{session_id}")
+async def session_detail(session_id: str) -> dict:
+    try:
+        return await service.get_session(session_id)
+    except SessionError as exc:
+        raise HTTPException(exc.status, exc.detail) from exc
 
 
 @app.get("/health")

@@ -8,32 +8,52 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
 <style>
   :root { --bg:#f5f6f8; --card:#fff; --ink:#1b2430; --muted:#667085; --line:#e3e7ee; --brand:#0b4f8a;
-          --brand-soft:#e7f0f9; --ok:#12805c; --ok-soft:#e6f5ef; --bad:#b42318; --bad-soft:#fdecea; --warn:#8a5a00; --warn-soft:#fff4dc; }
+          --brand-soft:#e7f0f9; --ok:#12805c; --ok-soft:#e6f5ef; --bad:#b42318; --bad-soft:#fdecea; --warn:#8a5a00; --warn-soft:#fff4dc;
+          --real:#6b3fa0; --real-soft:#f1eafa; --real-line:#d6c5ec; }
   * { box-sizing: border-box; }
+  html, body { height:100%; }
   body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui, "Segoe UI", Roboto, sans-serif; }
-  header { background:var(--card); border-bottom:1px solid var(--line); padding:10px 16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-  header h1 { font-size:18px; margin:0; color:var(--brand); }
-  header .sp { flex:1; }
   select, button, textarea { font:inherit; }
-  select { padding:6px 8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+  .app { display:grid; grid-template-columns:290px 1fr; height:100vh; }
+  aside { background:var(--card); border-right:1px solid var(--line); display:flex; flex-direction:column; min-height:0; }
+  aside header { padding:12px 14px; border-bottom:1px solid var(--line); }
+  aside h1 { font-size:18px; margin:0 0 8px; color:var(--brand); }
+  .list { overflow-y:auto; padding:8px; display:flex; flex-direction:column; gap:6px; }
+  .sess { text-align:left; border:1px solid var(--line); background:#fff; border-radius:10px; padding:8px 10px; cursor:pointer; width:100%; }
+  .sess.active { border-color:var(--brand); box-shadow:0 0 0 2px var(--brand-soft); }
+  .sess .t { font-size:13.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sess.real { background:var(--real-soft); border-color:var(--real-line); }
+  .sess.real.active { border-color:var(--real); box-shadow:0 0 0 2px var(--real-line); }
+  .sess.real .t { color:var(--real); }
+  .sub { font-size:11.5px; color:var(--muted); }
+  .pchip { display:inline-block; font-size:11.5px; font-weight:600; border-radius:999px; padding:1px 8px; margin-top:4px; margin-right:4px; }
+  .pchip.conservador { background:#e6f5ef; color:#12805c; } .pchip.moderado { background:#fff4dc; color:#8a5a00; }
+  .pchip.agresivo { background:#fdecea; color:#b42318; } .pchip.none { background:#eef1f5; color:var(--muted); }
+  .pchip.cap { background:#eef1f5; color:var(--ink); } .pchip.real { background:var(--real); color:#fff; }
+  .legend { font-size:11.5px; color:var(--muted); padding:8px 14px; border-top:1px solid var(--line); }
+  section.main { display:flex; flex-direction:column; min-width:0; min-height:0; }
+  .top { background:var(--card); border-bottom:1px solid var(--line); padding:8px 16px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; min-height:46px; }
+  .top .ttl { font-weight:600; } .sp { flex:1; }
   .btn { padding:7px 12px; border-radius:8px; border:1px solid var(--line); background:#fff; cursor:pointer; }
   .btn.primary { background:var(--brand); border-color:var(--brand); color:#fff; }
   .btn.ok { background:var(--ok); border-color:var(--ok); color:#fff; }
   .btn.bad { background:#fff; border-color:var(--bad); color:var(--bad); }
+  .btn.full { width:100%; }
   .btn:disabled { opacity:.5; cursor:not-allowed; }
   .disclaimer { background:var(--warn-soft); color:var(--warn); font-size:12.5px; padding:6px 16px; border-bottom:1px solid var(--line); }
-  main { max-width:900px; margin:0 auto; padding:16px 16px 150px; }
+  #chat { flex:1; overflow-y:auto; padding:16px; }
+  .inner { max-width:880px; margin:0 auto; }
   .msg { margin:12px 0; display:flex; flex-direction:column; }
   .msg.user { align-items:flex-end; }
   .bubble { max-width:100%; padding:10px 14px; border-radius:12px; background:var(--card); border:1px solid var(--line); overflow-wrap:anywhere; }
   .msg.user .bubble { background:var(--brand); color:#fff; border-color:var(--brand); max-width:80%; }
   .bubble table { border-collapse:collapse; display:block; overflow-x:auto; font-size:13.5px; }
   .bubble th, .bubble td { border:1px solid var(--line); padding:4px 8px; }
-  .bubble p { margin:.4em 0; } .bubble ul { margin:.4em 0; padding-left:1.2em; }
+  .bubble p { margin:.4em 0; } .bubble ul, .bubble ol { margin:.4em 0; padding-left:1.2em; }
   .chip { display:inline-block; font-size:11.5px; font-weight:600; padding:0 7px; margin:0 2px; border-radius:999px; background:var(--brand-soft);
           color:var(--brand); border:1px solid #c5dbf0; cursor:pointer; vertical-align:baseline; }
   .sources { margin-top:8px; display:flex; flex-direction:column; gap:6px; }
-  .source { font-size:12.5px; border:1px solid var(--line); border-radius:8px; padding:6px 10px; background:#fafbfc; }
+  .source { font-size:12.5px; border:1px solid var(--line); border-radius:8px; padding:6px 10px; background:#fafbfc; cursor:pointer; }
   .source.hl { border-color:var(--brand); background:var(--brand-soft); }
   .source b { color:var(--brand); } .source a { color:var(--brand); } .source .ex { color:var(--muted); display:none; margin-top:4px; }
   .source.open .ex { display:block; }
@@ -41,43 +61,56 @@
   .approval { margin-top:8px; border:1px solid #c5dbf0; background:var(--brand-soft); border-radius:12px; padding:12px 14px; }
   .approval h3 { margin:0 0 6px; font-size:15px; }
   .approval .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:4px 16px; font-size:13.5px; }
+  .warnbox { margin:8px 0; background:var(--warn-soft); color:var(--warn); border:1px solid #f0d58a; border-radius:8px; padding:6px 10px; font-size:12.5px; }
+  .warnbox ul { margin:4px 0 0; padding-left:1.1em; }
   .checks { margin:8px 0; padding:0; list-style:none; font-size:12.5px; }
-  .checks li { padding:2px 0; } .checks .y { color:var(--ok); } .checks .n { color:var(--bad); }
+  .checks li { padding:2px 0; } .checks .y { color:var(--ok); } .checks .n { color:var(--bad); } .checks .w { color:var(--warn); }
   .approval .actions { display:flex; gap:8px; margin-top:8px; }
   details.trace { margin-top:8px; font-size:12.5px; color:var(--muted); }
   details.trace summary { cursor:pointer; }
   .tool { border-left:3px solid var(--line); padding:3px 8px; margin:4px 0; }
   .tool.mcp { border-color:#7a5af8; } .tool.local { border-color:var(--ok); } .tool.blocked, .tool.error { border-color:var(--bad); background:var(--bad-soft); }
+  .tool.warn { border-color:#e0a800; background:var(--warn-soft); }
   .tool pre { margin:2px 0; white-space:pre-wrap; word-break:break-word; max-height:140px; overflow:auto; font-size:11.5px; background:#f5f6f8; padding:4px 6px; border-radius:6px; }
   .flag { display:inline-block; background:var(--bad-soft); color:var(--bad); font-size:11.5px; border-radius:6px; padding:1px 6px; margin:4px 4px 0 0; }
   .order { margin-top:8px; background:var(--ok-soft); color:var(--ok); border-radius:8px; padding:6px 10px; font-size:13px; }
-  footer { position:fixed; bottom:0; left:0; right:0; background:var(--card); border-top:1px solid var(--line); padding:10px 16px; }
-  .composer { max-width:900px; margin:0 auto; display:flex; gap:8px; }
+  .note { text-align:center; color:var(--muted); font-size:12px; margin:6px 0; }
+  .foot { background:var(--card); border-top:1px solid var(--line); padding:10px 16px; }
+  .composer { max-width:880px; margin:0 auto; display:flex; gap:8px; }
   textarea { flex:1; resize:none; border:1px solid var(--line); border-radius:10px; padding:9px 12px; min-height:44px; max-height:140px; }
-  .examples { max-width:900px; margin:0 auto 8px; display:flex; gap:6px; flex-wrap:wrap; }
+  .examples { max-width:880px; margin:0 auto 8px; display:flex; gap:6px; flex-wrap:wrap; }
   .examples button { font-size:12px; padding:4px 9px; border-radius:999px; border:1px solid var(--line); background:#fff; cursor:pointer; color:var(--muted); }
   .typing { color:var(--muted); font-size:13px; }
+  @media (max-width: 760px) { .app { grid-template-columns:1fr; grid-template-rows:auto 1fr; } aside { max-height:38vh; border-right:0; border-bottom:1px solid var(--line); } }
 </style>
 </head>
 <body>
-<header>
-  <h1>AsesorIA</h1><span class="tag">piloto &middot; paper trading</span>
-  <span class="sp"></span>
-  <label for="client">Cliente:</label>
-  <select id="client"></select>
-  <button class="btn" id="new">Nueva sesi&oacute;n</button>
-</header>
-<div class="disclaimer" id="disclaimer">AsesorIA es una herramienta demostrativa. No constituye asesor&iacute;a financiera real. Las &oacute;rdenes se ejecutan en paper trading (sin dinero real).</div>
-<main id="chat"></main>
-<footer>
-  <div class="examples" id="examples"></div>
-  <div class="composer">
-    <textarea id="input" rows="1" placeholder="Escribe tu consulta de inversi&oacute;n..."></textarea>
-    <button class="btn primary" id="send">Enviar</button>
-  </div>
-</footer>
+<div class="app">
+  <aside>
+    <header>
+      <h1>AsesorIA <span class="tag">piloto</span></h1>
+      <button class="btn primary full" id="new">+ Nueva conversaci&oacute;n</button>
+    </header>
+    <div class="list" id="sessions"></div>
+    <div class="legend"><span class="pchip real">cuenta real</span> capital y tenencias le&iacute;dos de la cuenta paper de Alpaca.
+      En las dem&aacute;s, el perfil y el capital se infieren de la conversaci&oacute;n.</div>
+  </aside>
+  <section class="main">
+    <div class="top"><span class="ttl" id="title">Nueva conversaci&oacute;n</span><span id="profile"></span><span class="sp"></span></div>
+    <div class="disclaimer">AsesorIA es una herramienta demostrativa. No constituye asesor&iacute;a financiera real. Las &oacute;rdenes se ejecutan en paper trading (sin dinero real).</div>
+    <div id="chat"><div class="inner" id="msgs"></div></div>
+    <div class="foot">
+      <div class="examples" id="examples"></div>
+      <div class="composer">
+        <textarea id="input" rows="1" placeholder="Escribe tu consulta de inversi&oacute;n..."></textarea>
+        <button class="btn primary" id="send">Enviar</button>
+      </div>
+    </div>
+  </section>
+</div>
 <script>
 const $ = (id) => document.getElementById(id);
+const REAL = "cuenta-alpaca";
 const EXAMPLES = [
   "¿Qué riesgos menciona Apple en su último reporte anual?",
   "Tengo un perfil moderado y USD 10,000. ¿Qué oportunidades ves entre MSFT, NVDA y un ETF de bonos?",
@@ -86,18 +119,27 @@ const EXAMPLES = [
 let sessionId = null, busy = false, pendingOpen = false;
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
 const money = (n) => "USD " + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const money0 = (n) => "USD " + Number(n).toLocaleString("en-US", { maximumFractionDigits: 0 });
 
 // El texto del modelo se trata como no confiable: Markdown -> HTML saneado (sin scripts ni atributos peligrosos).
 function render(md) {
   let html = (window.marked && window.DOMPurify) ? DOMPurify.sanitize(marked.parse(md || "")) : esc(md).replace(/\n/g, "<br>");
   return html.replace(/\[(S\d+)\]/g, '<span class="chip" data-sid="$1">$1</span>');
 }
+function profileChips(p, kind) {
+  let h = kind === "alpaca" ? '<span class="pchip real">cuenta real</span>' : "";
+  if (p && p.perfil_registrado) h += `<span class="pchip ${esc(p.perfil_de_riesgo)}">${esc(p.perfil_de_riesgo)} &middot; ${esc(p.origen)}</span>`;
+  else h += '<span class="pchip none">sin perfil</span>';
+  if (p && p.capital_invertible_usd != null) h += `<span class="pchip cap">${money0(p.capital_invertible_usd)}</span>`;
+  return h;
+}
 function setBusy(b) { busy = b; $("send").disabled = b || pendingOpen; $("input").disabled = b || pendingOpen; }
 function add(role, html) {
   const el = document.createElement("div"); el.className = "msg " + role;
-  el.innerHTML = '<div class="bubble">' + html + "</div>"; $("chat").appendChild(el);
-  window.scrollTo(0, document.body.scrollHeight); return el;
+  el.innerHTML = '<div class="bubble">' + html + "</div>"; $("msgs").appendChild(el);
+  $("chat").scrollTop = $("chat").scrollHeight; return el;
 }
+function note(text) { const el = document.createElement("div"); el.className = "note"; el.textContent = text; $("msgs").appendChild(el); }
 function traceHtml(trace) {
   const rows = (trace || []).filter((e) => e.event !== "user_message").map((e) => {
     if (e.event === "tool_call") return `<div class="tool ${esc(e.origen)} ${esc(e.status)}"><b>${esc(e.tool)}</b>
@@ -106,70 +148,106 @@ function traceHtml(trace) {
     if (e.event === "approval_requested") return `<div class="tool"><b>Confirmaci&oacute;n solicitada al usuario</b> <pre>${esc(JSON.stringify(e.args))}</pre></div>`;
     if (e.event === "approval_decision") return `<div class="tool ${e.approved ? "" : "blocked"}"><b>Decisi&oacute;n: ${e.approved ? "APROBADA" : "RECHAZADA"}</b>
       <span class="tag">por ${esc(e.by === "human" ? "el usuario" : "el sistema")}</span> ${e.reason ? esc(e.reason) : ""}</div>`;
+    if (e.event === "policy_warning") return `<div class="tool warn"><b>Advertencia de pol&iacute;tica (${e.etapa} de 2)</b> ${esc(e.orden)} &middot; ${esc((e.reglas || []).join(", "))}</div>`;
+    if (e.event === "policy_exception") return `<div class="tool warn"><b>Excepci&oacute;n de pol&iacute;tica registrada</b> ${esc(e.orden)} &middot; ${esc((e.reglas_excedidas || []).join(", "))}</div>`;
+    if (e.event === "profile_change_blocked") return `<div class="tool blocked"><b>Cambio de perfil bloqueado</b> (mensaje con patrones de inyecci&oacute;n) ${esc(JSON.stringify(e.intento))}</div>`;
+    if (e.event === "profile_change") return `<div class="tool warn"><b>Cambio de perfil</b> ${esc(JSON.stringify(e.antes))} &rarr; ${esc(JSON.stringify(e.despues))}${e.tras_advertencia ? ' <span class="tag">tras una advertencia</span>' : ""}</div>`;
     return "";
   }).join("");
   const n = (trace || []).filter((e) => e.event === "tool_call").length;
   return rows ? `<details class="trace"><summary>Trazabilidad: ${n} herramienta(s) invocada(s)</summary>${rows}</details>` : "";
 }
-function show(r) {
-  sessionId = r.session_id;
+function show(r, live = true) {
   let html = render(r.answer);
   if (r.citations.length) html += '<div class="sources">' + r.citations.map((c) =>
     `<div class="source" data-sid="${esc(c.sid)}"><b>${esc(c.sid)}</b> ${esc(c.titulo)} &middot; ${esc(c.seccion)}${c.pagina ? " &middot; p. " + esc(c.pagina) : ""}
      ${c.simulado ? '<span class="tag">pol&iacute;tica simulada</span>' : /^https?:/.test(c.url) ? `<a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">fuente</a>` : ""}
      <div class="ex">${esc(c.extracto)}&hellip;</div></div>`).join("") + "</div>";
-  for (const o of r.orders || []) html += `<div class="order">Orden enviada a Alpaca (paper): ${esc(o.cantidad)} ${esc(o.simbolo)} &middot; estado <b>${esc(o.status)}</b> &middot; id ${esc(o.order_id)}</div>`;
+  for (const o of r.orders || []) html += `<div class="order">Orden enviada a Alpaca (paper): ${esc(o.cantidad)} ${esc(o.simbolo)} &middot; estado <b>${esc(o.status)}</b> &middot; id ${esc(o.order_id)}${(o.excepcion_de_politica || []).length ? ' &middot; <b>excepci&oacute;n de pol&iacute;tica registrada</b>' : ""}</div>`;
   for (const f of r.flags || []) html += `<span class="flag">${esc(f)}</span>`;
   for (const p of r.pending_approvals || []) {
     const s = p.resumen || {};
+    const adv = p.advertencias || [];
     html += `<div class="approval" data-id="${esc(p.approval_id)}"><h3>Confirmar orden de compra</h3>
       <div class="grid"><div><b>Activo:</b> ${esc(s.simbolo)}</div><div><b>Cantidad:</b> ${esc(s.cantidad)}</div>
       <div><b>Tipo:</b> mercado / d&iacute;a</div><div><b>Precio ref.:</b> ${money(s.precio_referencia_usd)}</div>
       <div><b>Monto estimado:</b> ${money(s.monto_estimado_usd)}</div><div><b>Modo:</b> paper trading</div></div>
-      <ul class="checks">${(p.validaciones || []).map((v) => `<li class="${v.ok ? "y" : "n"}">${v.ok ? "✔" : "✘"} <b>${esc(v.regla)}</b>: ${esc(v.detalle)}</li>`).join("")}</ul>
+      ${adv.length ? `<div class="warnbox"><b>Esta orden excede los l&iacute;mites recomendados para tu perfil.</b> Decidiste continuar tras dos advertencias; quedar&aacute; registrada como excepci&oacute;n.<ul>${adv.map((a) => `<li>${esc(a.detalle)}</li>`).join("")}</ul></div>` : ""}
+      ${p.perfil_modificado_tras_advertencia ? '<div class="warnbox"><b>Atenci&oacute;n:</b> el perfil o el capital se modificaron en esta conversaci&oacute;n despu&eacute;s de una advertencia de pol&iacute;tica. Las validaciones usan el perfil nuevo.</div>' : ""}
+      <ul class="checks">${(p.validaciones || []).map((v) => `<li class="${v.ok ? "y" : v.tipo === "suave" ? "w" : "n"}">${v.ok ? "✔" : v.tipo === "suave" ? "⚠" : "✘"} <b>${esc(v.regla)}</b> <span class="tag">${v.tipo === "dura" ? "l&iacute;mite duro" : "recomendado"}</span> ${esc(v.detalle)}</li>`).join("")}</ul>
       ${p.mercado && p.mercado.nota ? `<div class="tag">${esc(p.mercado.nota)}</div>` : ""}
-      <div class="actions"><button class="btn ok" data-act="1">Confirmar compra</button><button class="btn bad" data-act="0">Rechazar</button></div></div>`;
+      <div class="actions"><button class="btn ok" data-act="1" ${live ? "" : "disabled"}>Confirmar compra</button><button class="btn bad" data-act="0" ${live ? "" : "disabled"}>Rechazar</button></div></div>`;
   }
-  html += traceHtml(r.trace) + `<div class="typing">${r.model} &middot; ${(r.latency_ms / 1000).toFixed(1)} s</div>`;
+  html += traceHtml(r.trace) + `<div class="typing">${esc(r.model)} &middot; ${(r.latency_ms / 1000).toFixed(1)} s</div>`;
   add("bot", html);
-  pendingOpen = (r.pending_approvals || []).length > 0;
+  if (live) pendingOpen = (r.pending_approvals || []).length > 0;
+}
+function header(title, profile, kind) {
+  $("title").textContent = kind === "alpaca" ? "Cuenta Alpaca (paper real)" : (title || "Nueva conversación");
+  $("profile").innerHTML = profileChips(profile, kind);
+}
+async function refreshSessions() {
+  const list = await fetch("/sessions").then((r) => r.json());
+  $("sessions").innerHTML = list.map((s) => `<button class="sess ${s.kind === "alpaca" ? "real" : ""} ${s.session_id === sessionId ? "active" : ""}" data-id="${esc(s.session_id)}">
+    <div class="t">${s.kind === "alpaca" ? "Cuenta Alpaca (paper real)" : esc(s.title)}</div>
+    <div>${profileChips(s.profile, s.kind)}</div>
+    <div class="sub">${s.n_messages ? s.n_messages + " mensajes" : "sin mensajes"}${(s.profile_changes || []).length ? " &middot; perfil modificado" : ""}</div></button>`).join("");
 }
 async function call(path, body) {
   const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const data = await res.json(); if (!res.ok) throw new Error(data.detail || res.statusText); return data;
 }
+function welcome(kind) {
+  add("bot", kind === "alpaca"
+    ? "Esta conversaci&oacute;n est&aacute; ligada a la <b>cuenta real de paper trading en Alpaca</b>: el capital y las tenencias se leen de la cuenta. Solo necesito conocer tu perfil de riesgo cuando pidas recomendaciones o compras."
+    : "Hola, soy <b>AsesorIA</b>. Respondo consultas con la base documental (con citas), analizo oportunidades y ejecuto compras en paper trading con tu confirmaci&oacute;n. Para recomendaciones y compras te preguntar&eacute; por tu perfil de riesgo y tu capital.");
+}
+async function openSession(id) {
+  if (busy) return;
+  sessionId = id; pendingOpen = false; $("msgs").innerHTML = "";
+  if (!id) { header("", null, "inferido"); welcome("inferido"); setBusy(false); return refreshSessions(); }
+  const s = await fetch("/sessions/" + encodeURIComponent(id)).then((r) => r.json());
+  header(s.title, s.profile, s.kind);
+  if (!s.messages.length) welcome(s.kind);
+  s.messages.forEach((m, i) => {
+    const last = i === s.messages.length - 1;
+    if (m.role === "user") add("user", esc(m.text));
+    else if (m.role === "decision") note(m.approved ? "Confirmaste la orden" : "Rechazaste la orden");
+    else show(m.response, last);
+  });
+  setBusy(false); refreshSessions();
+}
 async function send(text) {
   text = (text ?? $("input").value).trim(); if (!text || busy || pendingOpen) return;
   $("input").value = ""; add("user", esc(text)); setBusy(true);
   const wait = add("bot", '<span class="typing">AsesorIA est&aacute; consultando sus herramientas&hellip;</span>');
-  try { const r = await call("/chat", { message: text, session_id: sessionId, client_id: $("client").value }); wait.remove(); show(r); }
+  try { const r = await call("/chat", { message: text, session_id: sessionId }); wait.remove();
+    sessionId = r.session_id; show(r); header(r.title, r.profile, r.session_kind); }
   catch (e) { wait.remove(); add("bot", '<span class="flag">Error: ' + esc(e.message) + "</span>"); }
-  setBusy(false);
+  setBusy(false); refreshSessions();
 }
-$("chat").addEventListener("click", async (ev) => {
+$("msgs").addEventListener("click", async (ev) => {
   const chip = ev.target.closest(".chip"), src = ev.target.closest(".source"), btn = ev.target.closest("[data-act]");
   if (chip) { const t = chip.closest(".bubble").querySelector(`.source[data-sid="${chip.dataset.sid}"]`);
     if (t) { t.classList.add("open", "hl"); t.scrollIntoView({ block: "nearest", behavior: "smooth" }); setTimeout(() => t.classList.remove("hl"), 1500); } }
   else if (src && !ev.target.closest("a")) src.classList.toggle("open");
-  else if (btn) {
-    const card = btn.closest(".approval"); card.querySelectorAll("button").forEach((b) => (b.disabled = true)); setBusy(true);
+  else if (btn && !btn.disabled) {
+    const card = btn.closest(".approval"), approved = btn.dataset.act === "1";
+    card.querySelectorAll("button").forEach((b) => (b.disabled = true)); setBusy(true);
+    note(approved ? "Confirmaste la orden" : "Rechazaste la orden");
     const wait = add("bot", '<span class="typing">Procesando tu decisi&oacute;n&hellip;</span>');
-    try { const r = await call("/approve", { session_id: sessionId, approval_id: card.dataset.id, approved: btn.dataset.act === "1" });
-      pendingOpen = false; wait.remove(); show(r); }
+    try { const r = await call("/approve", { session_id: sessionId, approval_id: card.dataset.id, approved });
+      pendingOpen = false; wait.remove(); show(r); header(r.title, r.profile, r.session_kind); }
     catch (e) { pendingOpen = false; wait.remove(); add("bot", '<span class="flag">Error: ' + esc(e.message) + "</span>"); }
-    setBusy(false);
+    setBusy(false); refreshSessions();
   }
 });
-function reset() { sessionId = null; pendingOpen = false; $("chat").innerHTML = ""; setBusy(false);
-  add("bot", "Hola, soy <b>AsesorIA</b>. Puedo responder consultas con la base documental (con citas), analizar oportunidades seg&uacute;n el perfil del cliente y ejecutar compras en paper trading con tu confirmaci&oacute;n."); }
+$("sessions").addEventListener("click", (ev) => { const b = ev.target.closest(".sess"); if (b) openSession(b.dataset.id); });
 $("send").onclick = () => send();
 $("input").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
-$("new").onclick = reset; $("client").onchange = reset;
+$("new").onclick = () => openSession(null);
 EXAMPLES.forEach((t) => { const b = document.createElement("button"); b.textContent = t; b.onclick = () => send(t); $("examples").appendChild(b); });
-fetch("/clients").then((r) => r.json()).then((cs) => {
-  $("client").innerHTML = cs.map((c) => `<option value="${esc(c.client_id)}" ${c.client_id === "MOD-10K" ? "selected" : ""}>${esc(c.client_id)} &middot; ${esc(c.perfil)} &middot; USD ${Number(c.capital_invertible_usd).toLocaleString("en-US")}</option>`).join("");
-  reset();
-});
+openSession(null);
 </script>
 </body>
 </html>
