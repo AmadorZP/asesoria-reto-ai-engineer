@@ -1,0 +1,230 @@
+"""Orquestacion de un turno: sesion, ejecucion del agente, human-in-the-loop, citas y guardrails de salida."""
+from __future__ import annotations
+
+import json
+import re
+import time
+from typing import Any
+
+from agent_framework import AgentSession, Content, Message
+
+from advisor import runtime
+from advisor.agent import build_agent
+from advisor.config import ADVISOR_MODEL, ALPACA_ORDER_TOOL
+from advisor.mcp_alpaca import build_alpaca_tool, verify_alpaca_tool
+from advisor.middleware import find_ticket
+from advisor.policy import get_client
+from advisor.prompts import ABSTENCION, CANARY, DISCLAIMER
+from advisor.state import LEDGER, TURN, SessionState, Turn, log_event
+
+INJECTION_INPUT = re.compile(
+    r"(ignora (todas )?(las|tus) (instrucciones|reglas)|olvida (todas )?(las|tus) (instrucciones|reglas)|"
+    r"ignore (all |any )?(previous|prior|your) (instructions|rules)|system prompt|prompt (del|de) sistema|"
+    r"modo desarrollador|developer mode|jailbreak|sin (pedir )?confirmaci[oó]n|without confirmation|"
+    r"act[uú]a como|eres ahora|you are now|revela (tus|las) instrucciones|reveal your (prompt|instructions))",
+    re.IGNORECASE)
+CITATION = re.compile(r"\[(S\d+)\]")
+MAX_MESSAGE_CHARS = 4000
+
+
+class SessionError(Exception):
+    def __init__(self, status: int, detail: str) -> None:
+        super().__init__(detail)
+        self.status, self.detail = status, detail
+
+
+class AdvisorService:
+    def __init__(self) -> None:
+        self.sessions: dict[str, SessionState] = {}
+        self.agent = None
+        self.mcp_tools: dict[str, str] = {}
+
+    # ------------------------------------------------------------------ ciclo de vida
+    async def start(self) -> None:
+        from kb.search import KnowledgeBase
+
+        runtime.kb = KnowledgeBase()
+        runtime.alpaca = build_alpaca_tool()
+        await runtime.alpaca.connect()
+        self.mcp_tools = verify_alpaca_tool(runtime.alpaca)   # falla si la lista blanca o la aprobacion no aplican
+        self.agent = build_agent(runtime.alpaca)
+
+    async def stop(self) -> None:
+        if runtime.alpaca is not None:
+            await runtime.alpaca.close()
+        if runtime.kb is not None:
+            runtime.kb.close()
+
+    def reset(self) -> None:
+        self.sessions.clear()
+        LEDGER.reset()
+
+    # ------------------------------------------------------------------ sesiones
+    def _state(self, session_id: str, client_id: str | None) -> SessionState:
+        state = self.sessions.get(session_id)
+        if state is None:
+            if not client_id:
+                raise SessionError(400, "client_id es obligatorio al iniciar una sesion.")
+            try:
+                get_client(client_id)
+            except KeyError as exc:
+                raise SessionError(404, str(exc)) from exc
+            state = self.sessions[session_id] = SessionState(session_id=session_id, client_id=client_id)
+        elif client_id and client_id != state.client_id:
+            # El cliente queda ligado a la sesion: no se puede cambiar de identidad a mitad de conversacion.
+            raise SessionError(409, "La sesion ya esta asociada a otro cliente.")
+        return state
+
+    def _load(self, state: SessionState) -> AgentSession:
+        if state.blob:
+            return AgentSession.from_dict(json.loads(state.blob))
+        return self.agent.create_session(session_id=state.session_id)
+
+    @staticmethod
+    def _pending(session: AgentSession) -> list[Content]:
+        raw = session.state.get("tool_approval", {}).get("pending_approval_requests", [])
+        return [Content.from_dict(p) for p in raw]
+
+    # ------------------------------------------------------------------ turnos
+    async def chat(self, session_id: str, client_id: str | None, message: str) -> dict:
+        message = (message or "").strip()
+        if not message:
+            raise SessionError(400, "El mensaje esta vacio.")
+        if len(message) > MAX_MESSAGE_CHARS:
+            raise SessionError(413, f"El mensaje supera {MAX_MESSAGE_CHARS} caracteres.")
+        state = self._state(session_id, client_id)
+        async with state.lock:
+            turn, started = Turn(state), time.time()
+            token = TURN.set(turn)
+            session = self._load(state)
+            try:
+                # Un mensaje nuevo NO es una confirmacion: cualquier orden pendiente se rechaza.
+                pending = self._pending(session)
+                if pending:
+                    log_event(turn, {"event": "approval_decision", "approved": False, "by": "system",
+                                     "reason": "llego un mensaje nuevo sin confirmar la orden pendiente"})
+                    await self.agent.run(
+                        Message("user", [p.to_function_approval_response(False) for p in pending]), session=session)
+                if INJECTION_INPUT.search(message):
+                    turn.flags.append("posible_prompt_injection")
+                log_event(turn, {"event": "user_message", "text": message, "flags": list(turn.flags)})
+                result = await self.agent.run(message, session=session)
+                result = await self._reject_invalid_orders(result, session, turn)
+                return self._render(result, turn, started)
+            finally:
+                state.blob = json.dumps(session.to_dict())
+                TURN.reset(token)
+
+    async def approve(self, session_id: str, approval_id: str, approved: bool) -> dict:
+        state = self.sessions.get(session_id)
+        if state is None:
+            raise SessionError(404, "Sesion desconocida.")
+        async with state.lock:
+            turn, started = Turn(state), time.time()
+            token = TURN.set(turn)
+            session = self._load(state)
+            try:
+                pending = {c.id: c for c in self._pending(session)}
+                if approval_id not in pending:
+                    raise SessionError(409, "No existe una aprobacion pendiente con ese id (ya resuelta o inexistente).")
+                req = pending[approval_id]
+                log_event(turn, {"event": "approval_decision", "approved": approved, "by": "human",
+                                 "tool": req.function_call.name, "args": req.function_call.parse_arguments()})
+                result = await self.agent.run(
+                    Message("user", [req.to_function_approval_response(approved)]), session=session)
+                result = await self._reject_invalid_orders(result, session, turn)
+                return self._render(result, turn, started)
+            finally:
+                state.blob = json.dumps(session.to_dict())
+                TURN.reset(token)
+
+    async def _reject_invalid_orders(self, result, session: AgentSession, turn: Turn):
+        """Si el modelo intenta una orden sin validacion vigente, se rechaza antes de molestar al humano."""
+        for _ in range(3):
+            reqs = [r for r in result.user_input_requests if r.type == "function_approval_request"]
+            invalid = []
+            for r in reqs:
+                args = r.function_call.parse_arguments() or {}
+                motivo = "herramienta no autorizada" if r.function_call.name != ALPACA_ORDER_TOOL \
+                    else find_ticket(turn.state.tickets, args)[1]
+                if motivo:
+                    invalid.append((r, args, motivo))
+            if not invalid:
+                return result
+            for r, args, motivo in invalid:
+                log_event(turn, {"event": "approval_decision", "approved": False, "by": "system",
+                                 "tool": r.function_call.name, "args": args, "reason": motivo})
+            result = await self.agent.run(
+                Message("user", [r.to_function_approval_response(False) for r in reqs]), session=session)
+        return result
+
+    # ------------------------------------------------------------------ salida
+    def _render(self, result, turn: Turn, started: float) -> dict:
+        state = turn.state
+        answer = (result.text or "").strip()
+
+        pending = []
+        for r in result.user_input_requests:
+            if r.type != "function_approval_request":
+                continue
+            args = r.function_call.parse_arguments() or {}
+            ticket, _ = find_ticket(state.tickets, args)
+            # La tarjeta de confirmacion se arma con los argumentos REALES de la llamada y con el ticket
+            # validado por codigo, nunca con texto redactado por el modelo.
+            pending.append({
+                "approval_id": r.id, "tool": r.function_call.name, "arguments": args,
+                "resumen": {"operacion": "COMPRA", "simbolo": ticket["symbol"], "cantidad": ticket["qty"],
+                            "precio_referencia_usd": ticket["price"], "monto_estimado_usd": ticket["monto"],
+                            "tipo": "market", "vigencia": "day"} if ticket else None,
+                "validaciones": ticket["validaciones"] if ticket else [],
+                "mercado": ticket["mercado"] if ticket else None,
+            })
+            log_event(turn, {"event": "approval_requested", "approval_id": r.id,
+                             "tool": r.function_call.name, "args": args})
+        if pending and not answer:
+            p = pending[0]["resumen"]
+            answer = (f"La orden pasó las validaciones de perfil, límites y poder de compra. Resumen: COMPRA de "
+                      f"{p['cantidad']} {p['simbolo']} a mercado, precio de referencia USD {p['precio_referencia_usd']:,.2f}, "
+                      f"monto estimado USD {p['monto_estimado_usd']:,.2f} (paper trading). "
+                      f"¿Confirmas la ejecución?") if p else "Hay una acción pendiente de tu confirmación."
+
+        # Guardrail de salida 1: fuga del prompt (canario).
+        if CANARY in answer:
+            turn.flags.append("fuga_de_prompt_bloqueada")
+            answer = "No puedo compartir esa información. ¿En qué consulta de inversión te ayudo?"
+
+        # Guardrail de salida 2: citas verificadas. Solo sobreviven los [S#] que existen en la sesion.
+        cited: list[str] = []
+        def _check(m: re.Match) -> str:
+            sid = m.group(1)
+            if sid in state.sources:
+                if sid not in cited:
+                    cited.append(sid)
+                return m.group(0)
+            turn.flags.append(f"cita_invalida_eliminada:{sid}")
+            return ""
+        answer = CITATION.sub(_check, answer)
+        citations = [{
+            "sid": sid, "titulo": s["doc_title"], "seccion": f"{s['section']} {s.get('section_title') or ''}".strip(),
+            "pagina": s.get("page_start"), "url": s["source_url"], "doc_type": s["doc_type"],
+            "simulado": bool(s.get("is_simulated")), "extracto": (s.get("text") or "")[:400],
+        } for sid, s in ((c, state.sources[c]) for c in cited)]
+
+        # Guardrail de salida 3: abstencion. Si se consulto la base, no devolvio nada y no hubo otra fuente
+        # de datos, la respuesta debe declarar que no hay informacion suficiente.
+        if turn.kb_calls and not turn.kb_hits and not turn.data_calls and ABSTENCION.lower() not in answer.lower():
+            turn.flags.append("abstencion_forzada")
+            answer = f"{ABSTENCION} en la base de conocimiento para responder esta consulta.\n\n{answer}".strip()
+
+        orders = [{"ticket_id": t["ticket_id"], "order_id": t.get("order_id"), "status": t.get("status"),
+                   "simbolo": t["symbol"], "cantidad": t["qty"]}
+                  for t in state.tickets.values() if t["estado"] == "ejecutado"]
+        usage = getattr(result, "usage_details", None)
+        return {
+            "session_id": state.session_id, "client_id": state.client_id,
+            "answer": answer, "citations": citations, "pending_approvals": pending, "orders": orders,
+            "flags": turn.flags, "trace": turn.trace, "retrieved": turn.retrieved, "disclaimer": DISCLAIMER,
+            "abstained": ABSTENCION.lower() in answer.lower(),
+            "usage": dict(usage) if usage else None, "model": ADVISOR_MODEL,
+            "latency_ms": int((time.time() - started) * 1000),
+        }

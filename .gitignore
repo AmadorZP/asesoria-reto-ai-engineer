@@ -1,0 +1,20 @@
+# Secretos
+.env
+
+# Entorno
+.venv/
+__pycache__/
+*.pyc
+
+# Datos generados (se reconstruyen con la ingesta)
+data/raw/
+data/processed/
+data/qdrant/
+logs/
+
+# Configuracion local de herramientas
+.claude/
+
+# Sistema
+.DS_Store
+Thumbs.db

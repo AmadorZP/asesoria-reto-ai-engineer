@@ -1,0 +1,25 @@
+# Agente (Microsoft Agent Framework). Versiones verificadas el 2026-11-19.
+agent-framework-core==1.26.0
+agent-framework-openai==1.18.2
+mcp>=2.2.0,<3
+tenacity>=9.1.4,<10
+opentelemetry-sdk
+
+# API
+fastapi
+uvicorn
+python-dotenv
+pydantic>=2
+
+# Base de conocimiento
+qdrant-client[fastembed]>=1.20,<2
+sec2md==0.1.25
+pymupdf4llm
+beautifulsoup4
+markdownify
+requests
+pyyaml
+tiktoken
+
+# Pruebas
+pytest

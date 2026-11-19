@@ -1,0 +1,69 @@
+# Politicas internas SIMULADAS de AsesorIA (redactadas para el reto; no son politicas reales).
+# Este archivo es la UNICA fuente de verdad:
+#   1) el codigo lo lee para validar idoneidad y limites de cada orden (determinista);
+#   2) un script genera a partir de el los documentos Markdown que se ingestan en la base
+#      de conocimiento, para que el agente pueda explicar y citar la regla.
+version: "1.0"
+vigente_desde: "2026-11-19"
+simulada: true
+
+# Nivel de riesgo asignado a cada clase de activo.
+clases_de_activo:
+  etf_renta_fija:
+    descripcion: "ETF diversificado de bonos"
+    riesgo: bajo
+  etf_renta_variable:
+    descripcion: "ETF diversificado de acciones (indice amplio)"
+    riesgo: medio
+  accion_individual:
+    descripcion: "Accion de una sola empresa"
+    riesgo: alto
+
+# Universo operable: solo activos cubiertos por la base de conocimiento.
+universo:
+  AGG: etf_renta_fija
+  BND: etf_renta_fija
+  IVV: etf_renta_variable
+  VOO: etf_renta_variable
+  AAPL: accion_individual
+  MSFT: accion_individual
+  NVDA: accion_individual
+
+# Reglas por perfil de riesgo. Los porcentajes son sobre el capital invertible del cliente.
+perfiles:
+  conservador:
+    objetivo: "Preservar capital; tolera perdidas pequenas."
+    riesgo_maximo_por_activo: medio        # no puede comprar acciones individuales
+    max_renta_variable_pct: 30
+    max_concentracion_por_activo_pct:
+      etf_renta_fija: 60
+      etf_renta_variable: 30
+      accion_individual: 0
+    max_orden_pct_capital: 10
+  moderado:
+    objetivo: "Equilibrio entre crecimiento y estabilidad; tolera perdidas moderadas."
+    riesgo_maximo_por_activo: alto
+    max_renta_variable_pct: 60
+    max_concentracion_por_activo_pct:
+      etf_renta_fija: 60
+      etf_renta_variable: 40
+      accion_individual: 10
+    max_orden_pct_capital: 15
+  agresivo:
+    objetivo: "Maximizar crecimiento; tolera perdidas significativas."
+    riesgo_maximo_por_activo: alto
+    max_renta_variable_pct: 90
+    max_concentracion_por_activo_pct:
+      etf_renta_fija: 60
+      etf_renta_variable: 60
+      accion_individual: 20
+    max_orden_pct_capital: 25
+
+# Limites duros de cualquier orden, sin importar el perfil.
+limites_de_orden:
+  lado_permitido: buy            # solo compras
+  tipo_permitido: market
+  vigencia_permitida: day
+  monto_maximo_usd: 50000
+  cantidad_maxima_acciones: 1000
+  requiere_confirmacion_humana: true

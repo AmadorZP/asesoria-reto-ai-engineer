@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AsesorIA</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<style>
+  :root { --bg:#f5f6f8; --card:#fff; --ink:#1b2430; --muted:#667085; --line:#e3e7ee; --brand:#0b4f8a;
+          --brand-soft:#e7f0f9; --ok:#12805c; --ok-soft:#e6f5ef; --bad:#b42318; --bad-soft:#fdecea; --warn:#8a5a00; --warn-soft:#fff4dc; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui, "Segoe UI", Roboto, sans-serif; }
+  header { background:var(--card); border-bottom:1px solid var(--line); padding:10px 16px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  header h1 { font-size:18px; margin:0; color:var(--brand); }
+  header .sp { flex:1; }
+  select, button, textarea { font:inherit; }
+  select { padding:6px 8px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+  .btn { padding:7px 12px; border-radius:8px; border:1px solid var(--line); background:#fff; cursor:pointer; }
+  .btn.primary { background:var(--brand); border-color:var(--brand); color:#fff; }
+  .btn.ok { background:var(--ok); border-color:var(--ok); color:#fff; }
+  .btn.bad { background:#fff; border-color:var(--bad); color:var(--bad); }
+  .btn:disabled { opacity:.5; cursor:not-allowed; }
+  .disclaimer { background:var(--warn-soft); color:var(--warn); font-size:12.5px; padding:6px 16px; border-bottom:1px solid var(--line); }
+  main { max-width:900px; margin:0 auto; padding:16px 16px 150px; }
+  .msg { margin:12px 0; display:flex; flex-direction:column; }
+  .msg.user { align-items:flex-end; }
+  .bubble { max-width:100%; padding:10px 14px; border-radius:12px; background:var(--card); border:1px solid var(--line); overflow-wrap:anywhere; }
+  .msg.user .bubble { background:var(--brand); color:#fff; border-color:var(--brand); max-width:80%; }
+  .bubble table { border-collapse:collapse; display:block; overflow-x:auto; font-size:13.5px; }
+  .bubble th, .bubble td { border:1px solid var(--line); padding:4px 8px; }
+  .bubble p { margin:.4em 0; } .bubble ul { margin:.4em 0; padding-left:1.2em; }
+  .chip { display:inline-block; font-size:11.5px; font-weight:600; padding:0 7px; margin:0 2px; border-radius:999px; background:var(--brand-soft);
+          color:var(--brand); border:1px solid #c5dbf0; cursor:pointer; vertical-align:baseline; }
+  .sources { margin-top:8px; display:flex; flex-direction:column; gap:6px; }
+  .source { font-size:12.5px; border:1px solid var(--line); border-radius:8px; padding:6px 10px; background:#fafbfc; }
+  .source.hl { border-color:var(--brand); background:var(--brand-soft); }
+  .source b { color:var(--brand); } .source a { color:var(--brand); } .source .ex { color:var(--muted); display:none; margin-top:4px; }
+  .source.open .ex { display:block; }
+  .tag { font-size:11px; padding:1px 6px; border-radius:6px; background:#eef1f5; color:var(--muted); margin-left:6px; }
+  .approval { margin-top:8px; border:1px solid #c5dbf0; background:var(--brand-soft); border-radius:12px; padding:12px 14px; }
+  .approval h3 { margin:0 0 6px; font-size:15px; }
+  .approval .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:4px 16px; font-size:13.5px; }
+  .checks { margin:8px 0; padding:0; list-style:none; font-size:12.5px; }
+  .checks li { padding:2px 0; } .checks .y { color:var(--ok); } .checks .n { color:var(--bad); }
+  .approval .actions { display:flex; gap:8px; margin-top:8px; }
+  details.trace { margin-top:8px; font-size:12.5px; color:var(--muted); }
+  details.trace summary { cursor:pointer; }
+  .tool { border-left:3px solid var(--line); padding:3px 8px; margin:4px 0; }
+  .tool.mcp { border-color:#7a5af8; } .tool.local { border-color:var(--ok); } .tool.blocked, .tool.error { border-color:var(--bad); background:var(--bad-soft); }
+  .tool pre { margin:2px 0; white-space:pre-wrap; word-break:break-word; max-height:140px; overflow:auto; font-size:11.5px; background:#f5f6f8; padding:4px 6px; border-radius:6px; }
+  .flag { display:inline-block; background:var(--bad-soft); color:var(--bad); font-size:11.5px; border-radius:6px; padding:1px 6px; margin:4px 4px 0 0; }
+  .order { margin-top:8px; background:var(--ok-soft); color:var(--ok); border-radius:8px; padding:6px 10px; font-size:13px; }
+  footer { position:fixed; bottom:0; left:0; right:0; background:var(--card); border-top:1px solid var(--line); padding:10px 16px; }
+  .composer { max-width:900px; margin:0 auto; display:flex; gap:8px; }
+  textarea { flex:1; resize:none; border:1px solid var(--line); border-radius:10px; padding:9px 12px; min-height:44px; max-height:140px; }
+  .examples { max-width:900px; margin:0 auto 8px; display:flex; gap:6px; flex-wrap:wrap; }
+  .examples button { font-size:12px; padding:4px 9px; border-radius:999px; border:1px solid var(--line); background:#fff; cursor:pointer; color:var(--muted); }
+  .typing { color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>AsesorIA</h1><span class="tag">piloto &middot; paper trading</span>
+  <span class="sp"></span>
+  <label for="client">Cliente:</label>
+  <select id="client"></select>
+  <button class="btn" id="new">Nueva sesi&oacute;n</button>
+</header>
+<div class="disclaimer" id="disclaimer">AsesorIA es una herramienta demostrativa. No constituye asesor&iacute;a financiera real. Las &oacute;rdenes se ejecutan en paper trading (sin dinero real).</div>
+<main id="chat"></main>
+<footer>
+  <div class="examples" id="examples"></div>
+  <div class="composer">
+    <textarea id="input" rows="1" placeholder="Escribe tu consulta de inversi&oacute;n..."></textarea>
+    <button class="btn primary" id="send">Enviar</button>
+  </div>
+</footer>
+<script>
+const $ = (id) => document.getElementById(id);
+const EXAMPLES = [
+  "¿Qué riesgos menciona Apple en su último reporte anual?",
+  "Tengo un perfil moderado y USD 10,000. ¿Qué oportunidades ves entre MSFT, NVDA y un ETF de bonos?",
+  "Compra 5 acciones de MSFT.",
+];
+let sessionId = null, busy = false, pendingOpen = false;
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const money = (n) => "USD " + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// El texto del modelo se trata como no confiable: Markdown -> HTML saneado (sin scripts ni atributos peligrosos).
+function render(md) {
+  let html = (window.marked && window.DOMPurify) ? DOMPurify.sanitize(marked.parse(md || "")) : esc(md).replace(/\n/g, "<br>");
+  return html.replace(/\[(S\d+)\]/g, '<span class="chip" data-sid="$1">$1</span>');
+}
+function setBusy(b) { busy = b; $("send").disabled = b || pendingOpen; $("input").disabled = b || pendingOpen; }
+function add(role, html) {
+  const el = document.createElement("div"); el.className = "msg " + role;
+  el.innerHTML = '<div class="bubble">' + html + "</div>"; $("chat").appendChild(el);
+  window.scrollTo(0, document.body.scrollHeight); return el;
+}
+function traceHtml(trace) {
+  const rows = (trace || []).filter((e) => e.event !== "user_message").map((e) => {
+    if (e.event === "tool_call") return `<div class="tool ${esc(e.origen)} ${esc(e.status)}"><b>${esc(e.tool)}</b>
+      <span class="tag">${e.origen === "mcp" ? "MCP Alpaca" : "tool local"}</span><span class="tag">${esc(e.status)}</span><span class="tag">${e.ms} ms</span>
+      <pre>entrada: ${esc(JSON.stringify(e.args))}</pre><pre>salida: ${esc(e.result)}</pre></div>`;
+    if (e.event === "approval_requested") return `<div class="tool"><b>Confirmaci&oacute;n solicitada al usuario</b> <pre>${esc(JSON.stringify(e.args))}</pre></div>`;
+    if (e.event === "approval_decision") return `<div class="tool ${e.approved ? "" : "blocked"}"><b>Decisi&oacute;n: ${e.approved ? "APROBADA" : "RECHAZADA"}</b>
+      <span class="tag">por ${esc(e.by === "human" ? "el usuario" : "el sistema")}</span> ${e.reason ? esc(e.reason) : ""}</div>`;
+    return "";
+  }).join("");
+  const n = (trace || []).filter((e) => e.event === "tool_call").length;
+  return rows ? `<details class="trace"><summary>Trazabilidad: ${n} herramienta(s) invocada(s)</summary>${rows}</details>` : "";
+}
+function show(r) {
+  sessionId = r.session_id;
+  let html = render(r.answer);
+  if (r.citations.length) html += '<div class="sources">' + r.citations.map((c) =>
+    `<div class="source" data-sid="${esc(c.sid)}"><b>${esc(c.sid)}</b> ${esc(c.titulo)} &middot; ${esc(c.seccion)}${c.pagina ? " &middot; p. " + esc(c.pagina) : ""}
+     ${c.simulado ? '<span class="tag">pol&iacute;tica simulada</span>' : /^https?:/.test(c.url) ? `<a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">fuente</a>` : ""}
+     <div class="ex">${esc(c.extracto)}&hellip;</div></div>`).join("") + "</div>";
+  for (const o of r.orders || []) html += `<div class="order">Orden enviada a Alpaca (paper): ${esc(o.cantidad)} ${esc(o.simbolo)} &middot; estado <b>${esc(o.status)}</b> &middot; id ${esc(o.order_id)}</div>`;
+  for (const f of r.flags || []) html += `<span class="flag">${esc(f)}</span>`;
+  for (const p of r.pending_approvals || []) {
+    const s = p.resumen || {};
+    html += `<div class="approval" data-id="${esc(p.approval_id)}"><h3>Confirmar orden de compra</h3>
+      <div class="grid"><div><b>Activo:</b> ${esc(s.simbolo)}</div><div><b>Cantidad:</b> ${esc(s.cantidad)}</div>
+      <div><b>Tipo:</b> mercado / d&iacute;a</div><div><b>Precio ref.:</b> ${money(s.precio_referencia_usd)}</div>
+      <div><b>Monto estimado:</b> ${money(s.monto_estimado_usd)}</div><div><b>Modo:</b> paper trading</div></div>
+      <ul class="checks">${(p.validaciones || []).map((v) => `<li class="${v.ok ? "y" : "n"}">${v.ok ? "✔" : "✘"} <b>${esc(v.regla)}</b>: ${esc(v.detalle)}</li>`).join("")}</ul>
+      ${p.mercado && p.mercado.nota ? `<div class="tag">${esc(p.mercado.nota)}</div>` : ""}
+      <div class="actions"><button class="btn ok" data-act="1">Confirmar compra</button><button class="btn bad" data-act="0">Rechazar</button></div></div>`;
+  }
+  html += traceHtml(r.trace) + `<div class="typing">${r.model} &middot; ${(r.latency_ms / 1000).toFixed(1)} s</div>`;
+  add("bot", html);
+  pendingOpen = (r.pending_approvals || []).length > 0;
+}
+async function call(path, body) {
+  const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const data = await res.json(); if (!res.ok) throw new Error(data.detail || res.statusText); return data;
+}
+async function send(text) {
+  text = (text ?? $("input").value).trim(); if (!text || busy || pendingOpen) return;
+  $("input").value = ""; add("user", esc(text)); setBusy(true);
+  const wait = add("bot", '<span class="typing">AsesorIA est&aacute; consultando sus herramientas&hellip;</span>');
+  try { const r = await call("/chat", { message: text, session_id: sessionId, client_id: $("client").value }); wait.remove(); show(r); }
+  catch (e) { wait.remove(); add("bot", '<span class="flag">Error: ' + esc(e.message) + "</span>"); }
+  setBusy(false);
+}
+$("chat").addEventListener("click", async (ev) => {
+  const chip = ev.target.closest(".chip"), src = ev.target.closest(".source"), btn = ev.target.closest("[data-act]");
+  if (chip) { const t = chip.closest(".bubble").querySelector(`.source[data-sid="${chip.dataset.sid}"]`);
+    if (t) { t.classList.add("open", "hl"); t.scrollIntoView({ block: "nearest", behavior: "smooth" }); setTimeout(() => t.classList.remove("hl"), 1500); } }
+  else if (src && !ev.target.closest("a")) src.classList.toggle("open");
+  else if (btn) {
+    const card = btn.closest(".approval"); card.querySelectorAll("button").forEach((b) => (b.disabled = true)); setBusy(true);
+    const wait = add("bot", '<span class="typing">Procesando tu decisi&oacute;n&hellip;</span>');
+    try { const r = await call("/approve", { session_id: sessionId, approval_id: card.dataset.id, approved: btn.dataset.act === "1" });
+      pendingOpen = false; wait.remove(); show(r); }
+    catch (e) { pendingOpen = false; wait.remove(); add("bot", '<span class="flag">Error: ' + esc(e.message) + "</span>"); }
+    setBusy(false);
+  }
+});
+function reset() { sessionId = null; pendingOpen = false; $("chat").innerHTML = ""; setBusy(false);
+  add("bot", "Hola, soy <b>AsesorIA</b>. Puedo responder consultas con la base documental (con citas), analizar oportunidades seg&uacute;n el perfil del cliente y ejecutar compras en paper trading con tu confirmaci&oacute;n."); }
+$("send").onclick = () => send();
+$("input").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
+$("new").onclick = reset; $("client").onchange = reset;
+EXAMPLES.forEach((t) => { const b = document.createElement("button"); b.textContent = t; b.onclick = () => send(t); $("examples").appendChild(b); });
+fetch("/clients").then((r) => r.json()).then((cs) => {
+  $("client").innerHTML = cs.map((c) => `<option value="${esc(c.client_id)}" ${c.client_id === "MOD-10K" ? "selected" : ""}>${esc(c.client_id)} &middot; ${esc(c.perfil)} &middot; USD ${Number(c.capital_invertible_usd).toLocaleString("en-US")}</option>`).join("");
+  reset();
+});
+</script>
+</body>
+</html>

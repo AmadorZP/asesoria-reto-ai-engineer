@@ -1,0 +1,220 @@
+# Catalogo de la base de conocimiento de AsesorIA.
+# Criterios de seleccion:
+#   1. Fuente primaria y publica (regulador o emisor).
+#   2. Version vigente mas reciente por emisor y tipo de documento.
+#   3. Cobertura guiada por los escenarios de uso: riesgos de emisores, ETF de bonos,
+#      perfiles de riesgo e idoneidad.
+#   4. Diversidad de formato e idioma (HTML iXBRL, PDF, web; ingles y espanol).
+#   5. Corpus pequeno y curado, con metadatos completos, antes que grande y ruidoso.
+# Las politicas internas simuladas se generan desde kb/policies/politicas.yaml.
+
+dominios_permitidos:
+  - www.sec.gov
+  - www.investor.gov
+  - www.ishares.com
+  - institutional.vanguard.com
+  - personal.vanguard.com
+  - cdn.www.gob.pe
+  - img.lpderecho.pe
+  - s3.us-east-1.amazonaws.com
+
+documentos:
+  # ---------- Reportes corporativos (SEC EDGAR) ----------
+  - doc_id: aapl-10k-fy2026
+    title: "Apple Inc. - Form 10-K FY2026 (Annual Report)"
+    doc_type: 10-K
+    format: edgar_html
+    ticker: AAPL
+    issuer: Apple Inc.
+    fiscal_year: 2026
+    fiscal_period: FY
+    period_end: "2026-09-26"
+    filed_date: "2026-11-03"
+    language: en
+    url: https://www.sec.gov/Archives/edgar/data/320193/000032019326000026/aapl-20260926.htm
+  - doc_id: aapl-10q-fy2026-q3
+    title: "Apple Inc. - Form 10-Q Q3 FY2026 (Quarterly Report)"
+    doc_type: 10-Q
+    format: edgar_html
+    ticker: AAPL
+    issuer: Apple Inc.
+    fiscal_year: 2026
+    fiscal_period: Q3
+    period_end: "2026-06-27"
+    filed_date: "2026-07-31"
+    language: en
+    url: https://www.sec.gov/Archives/edgar/data/320193/000032019326000020/aapl-20260627.htm
+  - doc_id: msft-10k-fy2026
+    title: "Microsoft Corporation - Form 10-K FY2026 (Annual Report)"
+    doc_type: 10-K
+    format: edgar_html
+    ticker: MSFT
+    issuer: Microsoft Corporation
+    fiscal_year: 2026
+    fiscal_period: FY
+    period_end: "2026-06-30"
+    filed_date: "2026-07-29"
+    language: en
+    url: https://www.sec.gov/Archives/edgar/data/789019/000119312526323660/msft-20260630.htm
+  - doc_id: msft-10q-fy2027-q1
+    title: "Microsoft Corporation - Form 10-Q Q1 FY2027 (Quarterly Report)"
+    doc_type: 10-Q
+    format: edgar_html
+    ticker: MSFT
+    issuer: Microsoft Corporation
+    fiscal_year: 2027
+    fiscal_period: Q1
+    period_end: "2026-09-30"
+    filed_date: "2026-10-28"
+    language: en
+    url: https://www.sec.gov/Archives/edgar/data/789019/000119312526436133/msft-20260930.htm
+  - doc_id: nvda-10k-fy2026
+    title: "NVIDIA Corporation - Form 10-K FY2026 (Annual Report)"
+    doc_type: 10-K
+    format: edgar_html
+    ticker: NVDA
+    issuer: NVIDIA Corporation
+    fiscal_year: 2026
+    fiscal_period: FY
+    period_end: "2026-01-25"
+    filed_date: "2026-02-25"
+    language: en
+    url: https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm
+  - doc_id: nvda-10q-fy2027-q2
+    title: "NVIDIA Corporation - Form 10-Q Q2 FY2027 (Quarterly Report)"
+    doc_type: 10-Q
+    format: edgar_html
+    ticker: NVDA
+    issuer: NVIDIA Corporation
+    fiscal_year: 2027
+    fiscal_period: Q2
+    period_end: "2026-07-26"
+    filed_date: "2026-08-26"
+    language: en
+    url: https://www.sec.gov/Archives/edgar/data/1045810/000104581026000075/nvda-20260726.htm
+
+  # ---------- Fondos y ETFs ----------
+  - doc_id: agg-fact-sheet
+    title: "iShares Core U.S. Aggregate Bond ETF (AGG) - Fact Sheet"
+    doc_type: etf_fact_sheet
+    format: pdf
+    ticker: AGG
+    issuer: iShares (BlackRock)
+    language: en
+    url: https://www.ishares.com/us/literature/fact-sheet/agg-ishares-core-u-s-aggregate-bond-etf-fund-fact-sheet-en-us.pdf
+  - doc_id: ivv-fact-sheet
+    title: "iShares Core S&P 500 ETF (IVV) - Fact Sheet"
+    doc_type: etf_fact_sheet
+    format: pdf
+    ticker: IVV
+    issuer: iShares (BlackRock)
+    language: en
+    url: https://www.ishares.com/us/literature/fact-sheet/ivv-ishares-core-s-p-500-etf-fund-fact-sheet-en-us.pdf
+  - doc_id: bnd-fact-sheet
+    title: "Vanguard Total Bond Market ETF (BND) - Fact Sheet"
+    doc_type: etf_fact_sheet
+    format: pdf
+    ticker: BND
+    issuer: Vanguard
+    language: en
+    url: https://institutional.vanguard.com/iippdf/pdfs/FS928R.pdf
+  - doc_id: voo-fact-sheet
+    title: "Vanguard S&P 500 ETF (VOO) - Fact Sheet"
+    doc_type: etf_fact_sheet
+    format: pdf
+    ticker: VOO
+    issuer: Vanguard
+    language: en
+    url: https://institutional.vanguard.com/iippdf/pdfs/FS968R.pdf
+  - doc_id: bnd-summary-prospectus
+    title: "Vanguard Total Bond Market ETF (BND) - Summary Prospectus"
+    doc_type: etf_prospectus
+    format: pdf
+    ticker: BND
+    issuer: Vanguard
+    language: en
+    url: https://personal.vanguard.com/pub/Pdf/sp928.pdf
+  - doc_id: voo-summary-prospectus
+    title: "Vanguard S&P 500 ETF (VOO) - Summary Prospectus"
+    doc_type: etf_prospectus
+    format: pdf
+    ticker: VOO
+    issuer: Vanguard
+    language: en
+    url: https://personal.vanguard.com/pub/Pdf/sp968.pdf
+
+  # ---------- Educacion al inversor (SEC / Investor.gov) ----------
+  - doc_id: sec-risk-tolerance
+    title: "Investor.gov - Assessing Your Risk Tolerance"
+    doc_type: investor_education
+    format: web_html
+    issuer: U.S. SEC - Investor.gov
+    language: en
+    url: https://www.investor.gov/introduction-investing/getting-started/assessing-your-risk-tolerance
+  - doc_id: sec-asset-allocation-guide
+    title: "Investor.gov - Beginners' Guide to Asset Allocation, Diversification, and Rebalancing"
+    doc_type: investor_education
+    format: web_html
+    issuer: U.S. SEC - Investor.gov
+    language: en
+    url: https://www.investor.gov/additional-resources/general-resources/publications-research/info-sheets/beginners-guide-asset
+  - doc_id: sec-etfs
+    title: "Investor.gov - Mutual Funds and Exchange-Traded Funds (ETFs)"
+    doc_type: investor_education
+    format: web_html
+    issuer: U.S. SEC - Investor.gov
+    language: en
+    url: https://www.investor.gov/introduction-investing/investing-basics/investment-products/mutual-funds-and-exchange-traded-2
+  - doc_id: sec-bonds
+    title: "Investor.gov - Bonds"
+    doc_type: investor_education
+    format: web_html
+    issuer: U.S. SEC - Investor.gov
+    language: en
+    url: https://www.investor.gov/introduction-investing/investing-basics/investment-products/bonds-or-fixed-income-products/bonds
+  - doc_id: sec-mutual-funds-etfs-guide
+    title: "SEC - Mutual Funds and ETFs: A Guide for Investors"
+    doc_type: investor_education
+    format: pdf
+    issuer: U.S. SEC - Investor.gov
+    language: en
+    url: https://www.investor.gov/sites/investorgov/files/2019-02/mutual-funds-ETFs.pdf
+  - doc_id: sec-interest-rate-risk
+    title: "SEC Investor Bulletin - Interest Rate Risk"
+    doc_type: investor_education
+    format: pdf
+    issuer: U.S. SEC - Investor.gov
+    language: en
+    url: https://www.sec.gov/files/ib_interestraterisk.pdf
+  - doc_id: sec-saving-and-investing
+    title: "SEC - Saving and Investing: A Roadmap to Your Financial Security"
+    doc_type: investor_education
+    format: pdf
+    issuer: U.S. SEC - Investor.gov
+    language: en
+    url: https://www.investor.gov/sites/investorgov/files/2019-02/Saving-and-Investing.pdf
+
+  # ---------- Mercado local (Peru) ----------
+  - doc_id: smv-resolucion-011-2026
+    title: "SMV - Resolucion SMV N. 011-2026-SMV/01 (recomendaciones personalizadas y perfil de riesgo)"
+    doc_type: regulation_pe
+    format: pdf
+    issuer: Superintendencia del Mercado de Valores (Peru)
+    language: es
+    # Copia del texto publicado en El Peruano (la pagina oficial de gob.pe bloquea descargas automatizadas).
+    url: https://img.lpderecho.pe/wp-content/uploads/2026/08/Resolucion-SMV-011-2026-SMV-01-LPDerecho.pdf
+  - doc_id: smv-exposicion-motivos-011-2026
+    title: "SMV - Exposicion de motivos de la Resolucion SMV N. 011-2026-SMV/01"
+    doc_type: regulation_pe
+    format: pdf
+    issuer: Superintendencia del Mercado de Valores (Peru)
+    language: es
+    url: https://cdn.www.gob.pe/uploads/document/file/7844357/6614726-exposicion-de-motivos.pdf
+  - doc_id: bvl-memoria-2024
+    title: "Bolsa de Valores de Lima - Memoria Anual 2024"
+    doc_type: annual_report_pe
+    format: pdf
+    issuer: Bolsa de Valores de Lima
+    fiscal_year: 2024
+    language: es
+    url: https://s3.us-east-1.amazonaws.com/site.documents.cdn.prod.bvl.com.pe/Memoria_Anual_BVL_2024_1.pdf

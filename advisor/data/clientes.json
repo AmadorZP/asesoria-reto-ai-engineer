@@ -1,0 +1,14 @@
+{
+  "_nota": "Clientes FICTICIOS para el reto. Matriz perfil de riesgo x capital invertible.",
+  "clientes": [
+    {"client_id": "CON-10K",  "nombre": "Rosa Quispe (ficticio)",     "dni": "00000001", "perfil": "conservador", "capital_invertible_usd": 10000},
+    {"client_id": "CON-100K", "nombre": "Luis Paredes (ficticio)",    "dni": "00000002", "perfil": "conservador", "capital_invertible_usd": 100000},
+    {"client_id": "CON-1M",   "nombre": "Elena Salazar (ficticio)",   "dni": "00000003", "perfil": "conservador", "capital_invertible_usd": 1000000},
+    {"client_id": "MOD-10K",  "nombre": "Carlos Huaman (ficticio)",   "dni": "00000004", "perfil": "moderado",    "capital_invertible_usd": 10000},
+    {"client_id": "MOD-100K", "nombre": "Maria Torres (ficticio)",    "dni": "00000005", "perfil": "moderado",    "capital_invertible_usd": 100000},
+    {"client_id": "MOD-1M",   "nombre": "Jorge Mendoza (ficticio)",   "dni": "00000006", "perfil": "moderado",    "capital_invertible_usd": 1000000},
+    {"client_id": "AGR-10K",  "nombre": "Lucia Vargas (ficticio)",    "dni": "00000007", "perfil": "agresivo",    "capital_invertible_usd": 10000},
+    {"client_id": "AGR-100K", "nombre": "Diego Castillo (ficticio)",  "dni": "00000008", "perfil": "agresivo",    "capital_invertible_usd": 100000},
+    {"client_id": "AGR-1M",   "nombre": "Andrea Rojas (ficticio)",    "dni": "00000009", "perfil": "agresivo",    "capital_invertible_usd": 1000000}
+  ]
+}
